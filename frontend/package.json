@@ -17,15 +17,25 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.0.0",
     "class-variance-authority": "^0.7.1",
-    "@radix-ui/react-*": "latest",
     "zod": "^3.23.8",
     "react-hook-form": "^7.71.1",
-    "axios": "^1.13.5"
+    "axios": "^1.13.5",
+    "lodash": "^4.17.21",
+    "@radix-ui/react-dialog": "^1.1.6",
+    "@radix-ui/react-dropdown-menu": "^2.1.6",
+    "@radix-ui/react-label": "^2.1.2",
+    "@radix-ui/react-popover": "^1.1.6",
+    "@radix-ui/react-slot": "^1.1.2",
+    "@radix-ui/react-toast": "^1.2.6"
   },
   "devDependencies": {
     "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
     "typescript": "^5.8",
-    "tailwindcss": "^4.0.0",
-    "postcss": "^8"
+    "tailwindcss": "^4.0.0-beta.8",
+    "@tailwindcss/postcss": "^4.0.0-beta.8",
+    "postcss": "^8.5.1",
+    "@types/lodash": "^4.17.16"
   }
 }
