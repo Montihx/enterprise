@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test API</title>
+</head>
+<body>
+    <h1>Test</h1>
+    <button onclick="test()">Test API</button>
+    <pre id="result"></pre>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        async function test() {
+            try {
+                const res = await axios.post('http://localhost:8000/api/v1/auth/register', {
+                    email: 'test3@test.com',
+                    password: 'test123',
+                    username: 'test3'
+                });
+                document.getElementById('result').textContent = JSON.stringify(res.data, null, 2);
+            } catch(e) {
+                document.getElementById('result').textContent = e.message + '\n' + (e.response?.data || '');
+            }
+        }
+    </script>
+</body>
+</html>

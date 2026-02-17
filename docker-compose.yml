@@ -57,6 +57,7 @@ services:
       REDIS_URL: redis://cache:6379/0
       API_ENV: development
       SECRET_KEY: dev-secret-key-change-in-production
+      BACKEND_CORS_ORIGINS: '["http://localhost:3000","http://127.0.0.1:3000","http://web:3000"]'
     volumes:
       - ./backend:/app
       - media_data:/app/media

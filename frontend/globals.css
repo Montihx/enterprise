@@ -1,6 +1,23 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-bg-primary: #0a0a0f;
+  --color-bg-secondary: #141419;
+  --color-bg-tertiary: #1f1f29;
+  
+  --color-accent-primary: #8b5cf6;
+  --color-accent-secondary: #ec4899;
+  --color-accent-success: #10b981;
+  --color-accent-warning: #f59e0b;
+  --color-accent-danger: #ef4444;
+  
+  --color-text-primary: #f8f9fa;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #94a3b8;
+  
+  --color-border: rgba(148, 163, 184, 0.12);
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
 
 :root {
     --bg-primary: #0a0a0f;
