@@ -4,8 +4,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
@@ -13,12 +12,10 @@ from app.db.session import engine
 from app.api.v1.api import api_router
 from app.core.logging import setup_logging, logger
 from app.core.cache import cache
+from app.core.limiter import limiter
 from app.api.middleware import RequestContextMiddleware
 from app.api.errors import http_error_handler, unhandled_exception_handler
 from pathlib import Path
-
-# Initialize Rate Limiter
-limiter = Limiter(key_func=get_remote_address)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

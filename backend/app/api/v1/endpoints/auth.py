@@ -12,7 +12,7 @@ from app.crud.crud_user import user as crud_user
 from app.schemas.token import Token, TokenPayload, RefreshTokenRequest
 from app.schemas.user import UserCreate, User
 from app.services.audit_service import audit_service
-from app.main import limiter
+from app.core.limiter import limiter
 
 router = APIRouter()
 

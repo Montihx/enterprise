@@ -3,6 +3,7 @@ from .config import settings
 from .cache import cache, cached
 from .celery_app import celery_app, publish_job_progress
 from .logging import logger, setup_logging
+from .limiter import limiter
 from .security import (
     verify_password,
     get_password_hash,
@@ -19,6 +20,7 @@ __all__ = [
     "publish_job_progress",
     "logger",
     "setup_logging",
+    "limiter",
     "verify_password",
     "get_password_hash",
     "create_access_token",

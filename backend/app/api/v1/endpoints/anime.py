@@ -138,11 +138,10 @@ async def delete_anime(
     id: UUID,
     db: AsyncSession = Depends(deps.get_db),
     current_user = Depends(deps.audit_trail("delete", "anime")),
-) -> Any:
+):
     anime = await crud_anime.get(db, id=id)
     if not anime:
         raise HTTPException(status_code=404, detail="Anime not found")
     
     await crud_anime.delete(db, id=id)
     await cache.clear_prefix("catalog")
-    return None

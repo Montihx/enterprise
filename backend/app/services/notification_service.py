@@ -5,7 +5,8 @@ from sqlalchemy.future import select
 
 from app.crud.crud_notification import notification as crud_notification
 from app.schemas.notification import NotificationCreate
-from app.models.interaction import Favorite, User
+from app.models.interaction import Favorite
+from app.models.user import User
 
 class NotificationService:
     async def broadcast_to_users(

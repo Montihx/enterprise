@@ -6,7 +6,6 @@ from sqlalchemy import desc
 from app.api import deps
 from app.models.user import User
 from app.models.system import AuditLog
-from app.tasks.system import task_health_check
 from app.services.site_settings_service import site_settings_service
 
 router = APIRouter()
