@@ -89,6 +89,14 @@ pnpm dev
 ---
 
 ## 4. Тесты и качество кода
+### 4. UI тесты
+1) Установить Playwright и браузеры:
+   - cd frontend
+   - pnpm install
+   - npm i -D @playwright/test (если нужно отдельно)
+   - npx playwright install
+2) Запуск UI тестов:
+   - pnpm run test:e2e
 
 ### Backend
 
@@ -147,4 +155,3 @@ pnpm test -- --coverage
 2. Собрать и поднять `docker-compose.prod.yml`.
 3. Применить миграции и выполнить `python -m app.initial_data`.
 4. Повесить домен и SSL (через Nginx/Cloudflare).
-

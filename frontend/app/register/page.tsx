@@ -41,7 +41,7 @@ export default function RegisterPage() {
             <div className="max-w-md w-full space-y-8 bg-bg-secondary p-8 rounded-2xl border border-border shadow-2xl">
                 <div className="text-center">
                     <h2 className="mt-6 text-3xl font-black text-white uppercase tracking-tighter">
-                        Create Account
+                        Создать аккаунт
                     </h2>
                     <p className="mt-2 text-sm text-text-secondary">
                         Join the community and start tracking your anime journey
@@ -53,6 +53,7 @@ export default function RegisterPage() {
                         <div>
                             <label htmlFor="email-address" className="sr-only">Email address</label>
                             <input
+                                aria-label="Email address"
                                 {...register('email')}
                                 id="email-address"
                                 name="email"
@@ -69,6 +70,7 @@ export default function RegisterPage() {
                         <div>
                             <label htmlFor="username" className="sr-only">Username</label>
                             <input
+                                aria-label="Username"
                                 {...register('username')}
                                 id="username"
                                 name="username"
@@ -85,6 +87,7 @@ export default function RegisterPage() {
                         <div>
                             <label htmlFor="password" className="sr-only">Password</label>
                             <input
+                                aria-label="Password"
                                 {...register('password')}
                                 id="password"
                                 name="password"
@@ -93,6 +96,7 @@ export default function RegisterPage() {
                                 className="appearance-none rounded-xl relative block w-full px-4 py-3 border border-border bg-bg-tertiary placeholder-text-muted text-white focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent sm:text-sm"
                                 placeholder="Password"
                             />
+                            <p className="mt-1 text-xs text-text-secondary">Пароль должен содержать как минимум 8 символов</p>
                             {errors.password && (
                                 <p className="mt-1 text-xs text-accent-danger">{errors.password.message}</p>
                             )}
@@ -121,7 +125,7 @@ export default function RegisterPage() {
                             {isLoading ? (
                                 <Loader2 className="w-5 h-5 animate-spin" />
                             ) : (
-                                "CREATE ACCOUNT"
+                                "Создать аккаунт"
                             )}
                         </button>
                     </div>

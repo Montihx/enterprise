@@ -41,17 +41,17 @@ export default function LoginPage() {
             <div className="max-w-md w-full space-y-8 bg-bg-secondary p-8 rounded-2xl border border-border shadow-2xl">
                 <div className="text-center">
                     <h2 className="mt-6 text-3xl font-black text-white uppercase tracking-tighter">
-                        Welcome Back
+                        Вход в аккаунт
                     </h2>
                     <p className="mt-2 text-sm text-text-secondary">
-                        Sign in to access your watching history and collections
+                        Войдите, чтобы получить доступ к истории просмотра и коллекциям
                     </p>
                 </div>
 
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
                     <div className="rounded-md shadow-sm space-y-4">
                         <div>
-                            <label htmlFor="email-address" className="sr-only">Email address</label>
+                            <label htmlFor="email-address" className="sr-only">Электронная почта</label>
                             <input
                                 {...register('email')}
                                 id="email-address"
@@ -59,14 +59,14 @@ export default function LoginPage() {
                                 type="email"
                                 autoComplete="email"
                                 className="appearance-none rounded-xl relative block w-full px-4 py-3 border border-border bg-bg-tertiary placeholder-text-muted text-white focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent sm:text-sm"
-                                placeholder="Email address"
+                                placeholder="Электронная почта"
                             />
                             {errors.email && (
                                 <p className="mt-1 text-xs text-accent-danger">{errors.email.message}</p>
                             )}
                         </div>
                         <div>
-                            <label htmlFor="password" className="sr-only">Password</label>
+                            <label htmlFor="password" className="sr-only">Пароль</label>
                             <input
                                 {...register('password')}
                                 id="password"
@@ -74,7 +74,7 @@ export default function LoginPage() {
                                 type="password"
                                 autoComplete="current-password"
                                 className="appearance-none rounded-xl relative block w-full px-4 py-3 border border-border bg-bg-tertiary placeholder-text-muted text-white focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent sm:text-sm"
-                                placeholder="Password"
+                                placeholder="Пароль"
                             />
                             {errors.password && (
                                 <p className="mt-1 text-xs text-accent-danger">{errors.password.message}</p>
@@ -85,7 +85,7 @@ export default function LoginPage() {
                     <div className="flex items-center justify-between">
                         <div className="text-sm">
                             <Link href="#" className="font-medium text-accent-primary hover:text-accent-primary/80 transition-colors">
-                                Forgot your password?
+                                Забыли пароль?
                             </Link>
                         </div>
                     </div>
@@ -99,7 +99,7 @@ export default function LoginPage() {
                             {isLoading ? (
                                 <Loader2 className="w-5 h-5 animate-spin" />
                             ) : (
-                                "SIGN IN"
+                                "ВОЙТИ"
                             )}
                         </button>
                     </div>
@@ -107,9 +107,9 @@ export default function LoginPage() {
 
                 <div className="text-center mt-4">
                     <p className="text-sm text-text-secondary">
-                        Don't have an account?{' '}
+                        Нет аккаунта?{' '}
                         <Link href="/register" className="font-bold text-white hover:text-accent-primary transition-colors">
-                            Sign up
+                            Зарегистрируйтесь
                         </Link>
                     </p>
                 </div>

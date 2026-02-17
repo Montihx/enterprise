@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "next": "15.1.6",
@@ -30,6 +31,7 @@
     "framer-motion": "^11.0.0",
     "date-fns": "^3.0.0",
     "recharts": "^2.10.0",
+    "@hookform/resolvers": "^2.9.14",
     "zustand": "^5.0.0"
   },
   "devDependencies": {
@@ -41,6 +43,8 @@
     "@tailwindcss/postcss": "^4.0.0-beta.8",
     "postcss": "^8.5.1",
     "autoprefixer": "^10.4.20",
+    "@playwright/test": "^1.40.0",
+    "playwright": "^1.40.0",
     "@types/lodash": "^4.17.16"
   }
 }
