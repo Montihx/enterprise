@@ -5,7 +5,7 @@ from typing import Optional, Dict, Any
 from sqlalchemy import String, Integer, Text, Boolean, DateTime, ForeignKey, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID, JSONB
-from app.db.base import Base
+from app.models.base import Base
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"

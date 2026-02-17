@@ -1,0 +1,51 @@
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+*.md
+README.md
+docs/
+
+# Environment files (except examples)
+.env
+.env.local
+.env.*.local
+!env.example
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Node modules
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Media and backups
+media/
+backups/
+*.db
+
+# Logs
+*.log
+logs/
+
+# Docker
+.docker/
+
+# Temp files
+temp/
+tmp/

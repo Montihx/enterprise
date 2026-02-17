@@ -5,7 +5,7 @@ from typing import Optional
 from sqlalchemy import String, Integer, Text, Boolean, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
-from app.db.base import Base
+from app.models.base import Base
 
 class Episode(Base):
     __tablename__ = "episodes"

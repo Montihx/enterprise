@@ -1,117 +1,183 @@
+# ============================================
+# Kitsu Enterprise - Production Docker Compose
+# ============================================
+# Этот файл настроен для production-развертывания
+# Использует nginx как reverse proxy
+# ============================================
+
 version: '3.9'
 
 services:
-  postgres:
+  # PostgreSQL Database
+  # Хранит все данные приложения
+  database:
     image: postgres:16-alpine
-    container_name: kitsu_postgres_prod
+    container_name: kitsu-db-prod
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-kitsu}
       POSTGRES_USER: ${POSTGRES_USER:-kitsu}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?database password required}
     volumes:
-      - postgres_data_prod:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER}']
       interval: 10s
       timeout: 5s
       retries: 5
     restart: always
+    networks:
+      - kitsu-network-prod
 
-  redis:
+  # Redis Cache & Message Broker
+  # Используется для кэширования и Celery
+  cache:
     image: redis:7-alpine
-    container_name: kitsu_redis_prod
+    container_name: kitsu-redis-prod
     volumes:
-      - redis_data_prod:/data
+      - redis_data:/data
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
     restart: always
+    networks:
+      - kitsu-network-prod
 
-  backend:
+  # FastAPI Backend API
+  # Основной REST API сервер
+  api:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: kitsu_backend_prod
+      target: production
+    container_name: kitsu-api-prod
     environment:
-      DATABASE_URL: postgresql+asyncpg://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@postgres:5432/$${POSTGRES_DB}
-      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database:5432/$${POSTGRES_DB}
+      REDIS_URL: redis://cache:6379/0
       API_ENV: production
       SECRET_KEY: ${SECRET_KEY:?secret key required}
       BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS:-'["https://kitsu.io"]'}
       SENTRY_DSN: ${SENTRY_DSN}
     volumes:
-      - media_data_prod:/app/media
-      - backup_data_prod:/app/backups
+      - media_data:/app/media
+      - backup_data:/app/backups
     depends_on:
-      postgres:
+      database:
         condition: service_healthy
-      redis:
+      cache:
         condition: service_healthy
     restart: always
+    networks:
+      - kitsu-network-prod
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8000/api/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
+  # Celery Worker
+  # Воркер для фоновых задач (парсеры, бэкапы и т.д.)
   worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: kitsu_worker_prod
+      target: production
+    container_name: kitsu-worker-prod
     environment:
-      DATABASE_URL: postgresql+asyncpg://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@postgres:5432/$${POSTGRES_DB}
-      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database:5432/$${POSTGRES_DB}
+      REDIS_URL: redis://cache:6379/0
       API_ENV: production
       SENTRY_DSN: ${SENTRY_DSN}
-    command: celery -A app.worker worker --loglevel=info
+    command: celery -A app.worker worker --loglevel=info --concurrency=4
     volumes:
-      - media_data_prod:/app/media
-      - backup_data_prod:/app/backups
+      - media_data:/app/media
+      - backup_data:/app/backups
     depends_on:
-      - backend
-      - redis
-      - postgres
+      - api
+      - cache
+      - database
     restart: always
+    networks:
+      - kitsu-network-prod
+    healthcheck:
+      test: ['CMD', 'celery', '-A', 'app.worker', 'inspect', 'ping']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-  beat:
+  # Celery Beat Scheduler
+  # Планировщик периодических задач
+  scheduler:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: kitsu_beat_prod
+      target: production
+    container_name: kitsu-scheduler-prod
     environment:
-      DATABASE_URL: postgresql+asyncpg://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@postgres:5432/$${POSTGRES_DB}
-      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database:5432/$${POSTGRES_DB}
+      REDIS_URL: redis://cache:6379/0
       API_ENV: production
     command: celery -A app.core.celery_app beat --loglevel=info
     volumes:
-      - backup_data_prod:/app/backups
+      - backup_data:/app/backups
     depends_on:
-      - redis
+      - cache
     restart: always
+    networks:
+      - kitsu-network-prod
 
-  frontend:
+  # Next.js Frontend
+  # Веб-интерфейс для пользователей (production build)
+  web:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: kitsu_frontend_prod
+      target: production
+    container_name: kitsu-web-prod
     environment:
       NEXT_PUBLIC_API_URL: /api/v1
     restart: always
+    networks:
+      - kitsu-network-prod
 
+  # Nginx Reverse Proxy
+  # Маршрутизация запросов и статические файлы
   nginx:
     image: nginx:alpine
-    container_name: kitsu_nginx_prod
+    container_name: kitsu-nginx-prod
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - media_data_prod:/usr/share/nginx/html/media:ro
+      - media_data:/usr/share/nginx/html/media:ro
     ports:
-      - "80:80"
-      - "443:443"
+      - '80:80'
+      - '443:443'
     depends_on:
-      - backend
-      - frontend
+      - api
+      - web
     restart: always
+    networks:
+      - kitsu-network-prod
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost/']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 volumes:
-  postgres_data_prod:
-  redis_data_prod:
-  media_data_prod:
-  backup_data_prod:
+  postgres_data:
+    name: kitsu-postgres-data-prod
+  redis_data:
+    name: kitsu-redis-data-prod
+  media_data:
+    name: kitsu-media-data-prod
+  backup_data:
+    name: kitsu-backup-data-prod
+
+networks:
+  kitsu-network-prod:
+    name: kitsu-network-prod
+    driver: bridge

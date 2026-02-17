@@ -5,7 +5,7 @@ from typing import Optional
 from sqlalchemy import String, Text, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
-from app.db.base import Base
+from app.models.base import Base
 
 class Release(Base):
     __tablename__ = "releases"

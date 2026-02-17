@@ -5,7 +5,7 @@ from typing import Optional, List
 from sqlalchemy import String, Integer, Text, Date, DateTime, Numeric, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB, TSVECTOR
-from app.db.base import Base
+from app.models.base import Base
 
 class Anime(Base):
     __tablename__ = "anime"

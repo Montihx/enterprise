@@ -3,7 +3,7 @@ import uuid
 from sqlalchemy import String, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
-from app.db.base import Base
+from app.models.base import Base
 
 class Role(Base):
     __tablename__ = "roles"

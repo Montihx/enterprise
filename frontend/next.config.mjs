@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
-  reactStrictMode: True,
+  reactStrictMode: true,
   images: {
     remotePatterns: [{ protocol: 'https', hostname: '**' }],
   },

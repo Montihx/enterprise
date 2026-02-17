@@ -5,7 +5,7 @@ from typing import Optional, List, Dict, Any
 from sqlalchemy import String, Integer, Text, Boolean, DateTime, ForeignKey, CheckConstraint, Numeric, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
-from app.db.base import Base
+from app.models.base import Base
 
 class Collection(Base):
     __tablename__ = "collections"
