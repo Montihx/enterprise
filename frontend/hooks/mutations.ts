@@ -1,0 +1,365 @@
+
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
+import { storage } from '@/lib/storage'; // Import storage for token management
+
+// --- Auth Mutations ---
+export function useLogin() {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: async (data: any) => {
+      const response = await api.post('/auth/login/access-token', new URLSearchParams(data)); 
+      return response.data;
+    },
+    onSuccess: (data) => {
+      storage.setToken(data.access_token, data.refresh_token);
+      queryClient.invalidateQueries({ queryKey: ['users', 'me'] }); // Invalidate user data
+      queryClient.invalidateQueries({ queryKey: ['notifications'] }); // Invalidate notifications
+      queryClient.invalidateQueries({ queryKey: ['watchProgress'] }); // Invalidate watch progress
+      toast.success('Login successful!');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Login failed');
+    },
+  });
+}
+
+export function useRegister() {
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: async (data: any) => {
+      const response = await api.post('/auth/register', data); 
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Registration successful! Please log in.');
+      router.push('/login');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Registration failed');
+    },
+  });
+}
+
+
+// --- Anime Mutations ---
+export function useCreateAnime() {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: async (data: any) => {
+      const response = await api.post('/anime/', data); 
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Anime created successfully');
+      queryClient.invalidateQueries({ queryKey: ['anime'] });
+      router.push('/dashboard/content/anime');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Failed to create anime');
+    },
+  });
+}
+
+export function useUpdateAnime(id: string) {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: async (data: any) => {
+      const response = await api.patch(`/anime/${id}`, data); 
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Anime updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['anime'] });
+      router.push('/dashboard/content/anime');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Failed to update anime');
+    },
+  });
+}
+
+export function useDeleteAnime() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.delete(`/anime/${id}`); 
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Anime deleted successfully');
+      queryClient.invalidateQueries({ queryKey: ['anime'] });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Failed to delete anime');
+    },
+  });
+}
+
+// --- Episode & Release Mutations ---
+
+export function useDeleteEpisode() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => await api.delete(`/episodes/${id}`),
+    onSuccess: () => {
+      toast.success('Episode purged');
+      queryClient.invalidateQueries({ queryKey: ['episodes'] });
+    }
+  });
+}
+
+export function useDeleteRelease() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => await api.delete(`/releases/${id}`),
+    onSuccess: () => {
+      toast.success('Release node decommissioned');
+      queryClient.invalidateQueries({ queryKey: ['releases'] });
+    }
+  });
+}
+
+// --- Interaction Mutations ---
+
+export function useCreateComment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { anime_id?: string; episode_id?: string; content: string }) => {
+      const response = await api.post('/interactions/comments', { comment_in: data });
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      toast.success('Comment posted');
+      queryClient.invalidateQueries({ queryKey: ['comments', variables.anime_id, variables.episode_id] });
+    }
+  });
+}
+
+export function useApproveComment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.post(`/interactions/comments/${id}/approve`);
+    },
+    onSuccess: () => {
+      toast.success('Comment approved');
+      queryClient.invalidateQueries({ queryKey: ['staffComments'] });
+    }
+  });
+}
+
+export function useUpdateWatchProgress() {
+  return useMutation({
+    mutationFn: async (data: { episode_id: string; position: number; total: number }) => {
+      const response = await api.post('/interactions/watch-progress', data);
+      return response.data;
+    },
+  });
+}
+
+export function useToggleFavorite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { anime_id: string; category: string }) => {
+      await api.post('/interactions/favorites', data);
+    },
+    onSuccess: () => {
+      toast.success('List updated');
+      queryClient.invalidateQueries({ queryKey: ['favorites'] });
+    }
+  });
+}
+
+// --- Conflict Resolution ---
+
+export function useResolveConflict() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, strategy }: { id: string, strategy: string }) => {
+      await api.post(`/dashboard/parsers/conflicts/${id}/resolve`, { strategy });
+    },
+    onSuccess: () => {
+      toast.success('Conflict state reconciled');
+      queryClient.invalidateQueries({ queryKey: ['parserConflicts'] });
+    },
+    onError: () => toast.error('Resolution fault: check system logs')
+  });
+}
+
+// --- Bulk Operations ---
+
+export function useBulkAction(resource: 'anime' | 'episodes') {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { ids: string[]; action: string; new_status?: string }) => {
+      await api.post(`/dashboard/bulk/${resource}`, data);
+    },
+    onSuccess: () => {
+      toast.success('Bulk operation completed');
+      queryClient.invalidateQueries({ queryKey: [resource] });
+    }
+  });
+}
+
+// --- Parser Mutations ---
+export function useUpdateParserSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ category, config, description }: any) => {
+      const response = await api.patch(`/dashboard/parsers/settings/${category}`, { config, description });
+      return response.data;
+    },
+    onSuccess: (data, variables) => {
+      toast.success(`${variables.category} settings saved`);
+      queryClient.invalidateQueries({ queryKey: ['parserSettings'] });
+    }
+  });
+}
+
+// ─── Type Definitions (used by Form components) ───────────────────────────
+
+export interface AnimeCreate {
+  title: string;
+  title_en?: string;
+  title_original?: string;
+  slug?: string;
+  kind?: string;
+  status?: string;
+  description?: string;
+  poster_url?: string;
+  year?: number;
+  score?: number;
+  genres?: string[];
+  episodes_total?: number;
+  episodes_aired?: number;
+  shikimori_id?: string;
+  kodik_id?: string;
+  is_adult?: boolean;
+}
+
+export type AnimeUpdate = Partial<AnimeCreate>;
+
+export interface EpisodeCreate {
+  anime_id: string;
+  season?: number;
+  episode: number;
+  title?: string;
+  description?: string;
+  air_date?: string;
+  duration?: number;
+  filler?: boolean;
+  recap?: boolean;
+}
+
+export type EpisodeUpdate = Partial<EpisodeCreate>;
+
+export interface ReleaseCreate {
+  episode_id: string;
+  source?: string;
+  quality?: string;
+  url: string;
+  embed_url?: string;
+  translation_type?: string;
+  translation_name?: string;
+  is_active?: boolean;
+}
+
+export type ReleaseUpdate = Partial<ReleaseCreate>;
+
+// ─── Episode Mutations ────────────────────────────────────────────────────
+
+export function useCreateEpisode() {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: async (data: EpisodeCreate) => {
+      const response = await api.post('/episodes/', data);
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Episode created successfully');
+      queryClient.invalidateQueries({ queryKey: ['episodes'] });
+      router.push('/dashboard/content/episodes');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Failed to create episode');
+    },
+  });
+}
+
+export function useUpdateEpisode(id: string) {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: async (data: EpisodeUpdate) => {
+      const response = await api.patch(`/episodes/${id}`, data);
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Episode updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['episodes'] });
+      queryClient.invalidateQueries({ queryKey: ['episode', id] });
+      router.push('/dashboard/content/episodes');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Failed to update episode');
+    },
+  });
+}
+
+// ─── Release Mutations ────────────────────────────────────────────────────
+
+export function useCreateRelease() {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: async (data: ReleaseCreate) => {
+      const response = await api.post('/releases/', data);
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Release created successfully');
+      queryClient.invalidateQueries({ queryKey: ['releases'] });
+      router.push('/dashboard/content/releases');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Failed to create release');
+    },
+  });
+}
+
+export function useUpdateRelease(id: string) {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: async (data: ReleaseUpdate) => {
+      const response = await api.patch(`/releases/${id}`, data);
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Release updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['releases'] });
+      queryClient.invalidateQueries({ queryKey: ['release', id] });
+      router.push('/dashboard/content/releases');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Failed to update release');
+    },
+  });
+}

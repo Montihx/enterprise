@@ -1,0 +1,6 @@
+{
+  "name": "Kitsu Enterprise Platform",
+  "description": "Enterprise-grade anime streaming SaaS with advanced PWA and API protection logic.",
+  "requestFramePermissions": [],
+  "version": "2.0.0-GA"
+}
