@@ -158,6 +158,8 @@ services:
     restart: unless-stopped
     networks:
       - kitsu-network
+  
+  # UI Tests container removed in local dev to avoid external Playwright image issues
 
 volumes:
   postgres_data:

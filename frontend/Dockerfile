@@ -20,7 +20,7 @@ COPY package.json package-lock.json* pnpm-lock.yaml* ./
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Install dependencies
-RUN pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 # Stage 2: Development
 FROM node:20-alpine AS development
