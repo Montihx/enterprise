@@ -22,10 +22,10 @@ limiter = Limiter(key_func=get_remote_address)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup sequence
+    # Startup
     setup_logging()
-    Path(settings.MEDIA_ROOT)
-    await cache.connect().mkdir(parents=True, exist_ok=True)
+    Path(settings.MEDIA_ROOT).mkdir(parents=True, exist_ok=True)
+    await cache.connect()
     
     if settings.SENTRY_DSN:
         sentry_sdk.init(
@@ -35,12 +35,14 @@ async def lifespan(app: FastAPI):
         )
         logger.info("Sentry: Guarding application state")
 
-    logger.info("Kitsu Enterprise API: Cluster Online", env=settings.API_ENV)
+    logger.info("Kitsu Enterprise API: Cluster Online", extra={"env": settings.API_ENV})
     yield
-    # Shutdown sequence
+    
+    # Shutdown
     logger.info("Kitsu Enterprise API: Initiating graceful shutdown")
     await cache.disconnect()
     await engine.dispose()
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
