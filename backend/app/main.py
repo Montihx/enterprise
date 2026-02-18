@@ -1,3 +1,11 @@
+# Prometheus metrics — must be imported before app setup if using
+# prometheus-fastapi-instrumentator. Graceful fallback if not installed.
+try:
+    from prometheus_fastapi_instrumentator import Instrumentator as _Instrumentator
+    _USE_PROMETHEUS = True
+except ImportError:
+    _USE_PROMETHEUS = False
+
 import sentry_sdk
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request

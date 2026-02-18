@@ -1,3 +1,4 @@
+import os
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -64,8 +65,8 @@ async def init_db(db: AsyncSession) -> None:
             logger.info(f"Role created: {role_data['name']}")
     
     # 2. Create Superuser
-    FIRST_SUPERUSER = "admin@kitsu.io"
-    FIRST_SUPERUSER_PASSWORD = "changeme"
+    FIRST_SUPERUSER = os.getenv("FIRST_SUPERUSER_EMAIL", "admin@kitsu.io")
+    FIRST_SUPERUSER_PASSWORD = os.getenv("FIRST_SUPERUSER_PASSWORD", "changeme")
     
     user = await crud_user.get_by_email(db, email=FIRST_SUPERUSER)
     if not user:

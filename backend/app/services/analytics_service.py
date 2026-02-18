@@ -1,7 +1,7 @@
 from typing import Dict, List, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, select, desc
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.models.anime import Anime
 from app.models.user import User
 from app.models.interaction import WatchProgress, Favorite
@@ -10,7 +10,7 @@ from app.models.release import Release
 class AnalyticsService:
     async def get_overview_metrics(self, db: AsyncSession) -> Dict[str, Any]:
         """Compute top-level KPI metrics with growth deltas using real database state."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         last_month = now - timedelta(days=30)
 
         # 1. Audience Total & Growth
@@ -32,8 +32,28 @@ class AnalyticsService:
             "audience": {"value": u_total, "trend": u_trend, "isPositive": u_trend >= 0},
             "catalog": {"value": anime_total, "trend": anime_trend, "isPositive": anime_trend >= 0},
             "assets": {"value": releases_total, "trend": releases_trend, "isPositive": releases_trend >= 0},
-            "uptime": "99.99%" # Mocked as uptime depends on external monitoring (Sentry/Datadog)
+            "uptime": None  # Track via Prometheus/Sentry, not hardcoded # Mocked as uptime depends on external monitoring (Sentry/Datadog)
         }
+
+
+    def _get_uptime(self) -> str:
+        """Returns real server uptime since process start."""
+        import psutil, os
+        try:
+            proc = psutil.Process(os.getpid())
+            start = proc.create_time()
+            uptime_seconds = (datetime.now().timestamp() - start)
+            days = int(uptime_seconds // 86400)
+            hours = int((uptime_seconds % 86400) // 3600)
+            minutes = int((uptime_seconds % 3600) // 60)
+            if days > 0:
+                return f"{days}d {hours}h {minutes}m"
+            elif hours > 0:
+                return f"{hours}h {minutes}m"
+            else:
+                return f"{minutes}m"
+        except Exception:
+            return "N/A"
 
     async def get_popular_content(self, db: AsyncSession, limit: int = 5) -> List[Dict[str, Any]]:
         """Fetch content nodes with highest interaction counts."""

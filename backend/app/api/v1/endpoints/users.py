@@ -1,5 +1,5 @@
 from typing import Any, List
-from fastapi import APIRouter, Body, Depends, HTTPException, Path
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, UploadFile, File, Form
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
@@ -40,20 +40,61 @@ async def update_user_me(
     password: str = Body(None),
     full_name: str = Body(None),
     email: str = Body(None),
+    avatar_url: str = Body(None),
+    bio: str = Body(None),
     current_user: User = Depends(deps.get_current_active_user),
 ) -> Any:
-    """
-    Update own user.
-    """
-    current_user_data = jsonable_encoder(current_user)
-    user_in = UserUpdate(**current_user_data)
+    """Update own user profile (name, email, avatar, bio)."""
+    update_data: dict = {}
     if password is not None:
-        user_in.password = password
+        update_data["password"] = password
     if full_name is not None:
-        user_in.full_name = full_name
+        update_data["full_name"] = full_name
     if email is not None:
-        user_in.email = email
-    user = await crud_user.update(db, db_obj=current_user, obj_in=user_in)
+        update_data["email"] = email
+    if avatar_url is not None:
+        update_data["avatar_url"] = avatar_url
+    if bio is not None:
+        update_data["bio"] = bio
+    user = await crud_user.update(db, db_obj=current_user, obj_in=update_data)
+    return user
+
+
+@router.post("/me/avatar", response_model=UserSchema)
+async def upload_avatar(
+    *,
+    db: AsyncSession = Depends(deps.get_db),
+    file: UploadFile = File(..., description="Avatar image (JPEG, PNG, WebP, max 5MB)"),
+    current_user: User = Depends(deps.get_current_active_user),
+) -> Any:
+    """Upload a real avatar image. Returns updated user with new avatar_url."""
+    import os, uuid
+    from pathlib import Path as FilePath
+
+    # Validate content type
+    ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+    if file.content_type not in ALLOWED_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported image type: {file.content_type}. Allowed: JPEG, PNG, WebP, GIF"
+        )
+
+    # Read and check size
+    contents = await file.read()
+    if len(contents) > 5 * 1024 * 1024:  # 5MB
+        raise HTTPException(status_code=400, detail="File too large. Maximum size is 5MB.")
+
+    # Save to media/avatars/
+    ext = file.filename.rsplit(".", 1)[-1] if "." in file.filename else "jpg"
+    filename = f"{current_user.id}_{uuid.uuid4().hex[:8]}.{ext}"
+    media_dir = FilePath("/app/media/avatars")
+    media_dir.mkdir(parents=True, exist_ok=True)
+
+    filepath = media_dir / filename
+    filepath.write_bytes(contents)
+
+    avatar_url = f"/media/avatars/{filename}"
+    user = await crud_user.update(db, db_obj=current_user, obj_in={"avatar_url": avatar_url})
     return user
 
 # --- Admin Endpoints ---

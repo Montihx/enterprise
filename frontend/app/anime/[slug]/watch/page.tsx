@@ -11,11 +11,28 @@ import { ChevronDown, Share2, ChevronLeft, Loader2, ListVideo } from 'lucide-rea
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 export default function WatchPage() {
   const { slug } = useParams();
   const searchParams = useSearchParams();
   const initialEp = parseInt(searchParams.get('episode') || '1');
+  const [shareCopied, setShareCopied] = useState(false);
+
+  const handleShare = async () => {
+    const url = typeof window !== 'undefined' ? window.location.href : '';
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: document.title, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2500);
+      }
+    } catch {
+      // User cancelled or clipboard not available
+    }
+  };
 
   const { data: anime, isLoading: animeLoading } = useAnime(slug as string);
   const { data: episodes, isLoading: epLoading } = useEpisodes(anime?.id || '');
@@ -114,7 +131,18 @@ export default function WatchPage() {
                   <span className="text-[10px] font-black uppercase tracking-widest text-accent-primary">Kitsu Enterprise</span>
                   <span className="text-[8px] font-black uppercase text-accent-primary/50">SECURE_GATEWAY</span>
                </div>
-               <button className="p-2 text-text-muted hover:text-white transition-colors"><Share2 className="h-5 w-5" /></button>
+               <button
+                 className="p-2 text-text-muted hover:text-white transition-colors relative"
+                 onClick={handleShare}
+                 title="Поделиться"
+               >
+                 <Share2 className="h-5 w-5" />
+                 {shareCopied && (
+                   <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-green-600 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                     Ссылка скопирована!
+                   </span>
+                 )}
+               </button>
             </div>
           </div>
 
@@ -197,4 +225,3 @@ export default function WatchPage() {
   );
 }
 
-import { Badge } from '@/components/ui/badge';

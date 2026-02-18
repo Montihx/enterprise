@@ -3,15 +3,13 @@ const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
   images: {
-    remotePatterns: [{ protocol: 'https', hostname: '**' }],
-  },
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: 'http://localhost:8000/api/:path*',
-      },
-    ];
+    remotePatterns: [
+      { protocol: 'https', hostname: 'shikimori.one' },
+      { protocol: 'https', hostname: 'shikimori.one', pathname: '/system/**' },
+      { protocol: 'https', hostname: 'kodik.biz' },
+      { protocol: 'https', hostname: 'st.kp.yandex.net' },
+      { protocol: 'https', hostname: 'api.dicebear.com' },
+    ],
   },
 };
 

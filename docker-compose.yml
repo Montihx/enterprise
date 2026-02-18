@@ -1,13 +1,8 @@
 # ============================================
 # Kitsu Enterprise - Development Docker Compose
 # ============================================
-# Этот файл настроен для локальной разработки
-# Все сервисы доступны напрямую с хоста через порты
-# ============================================
 
 services:
-  # PostgreSQL Database
-  # Хранит все данные приложения
   database:
     image: postgres:16-alpine
     container_name: kitsu-db-dev
@@ -26,9 +21,8 @@ services:
       retries: 5
     networks:
       - kitsu-network
+    restart: unless-stopped
 
-  # Redis Cache & Message Broker
-  # Используется для кэширования и Celery
   cache:
     image: redis:7-alpine
     container_name: kitsu-redis-dev
@@ -41,9 +35,8 @@ services:
       retries: 5
     networks:
       - kitsu-network
+    restart: unless-stopped
 
-  # FastAPI Backend API
-  # Основной REST API сервер
   api:
     build:
       context: ./backend
@@ -56,8 +49,8 @@ services:
       DATABASE_URL: postgresql+asyncpg://kitsu:devpassword@database:5432/kitsu
       REDIS_URL: redis://cache:6379/0
       API_ENV: development
-      SECRET_KEY: dev-secret-key-change-in-production
-      BACKEND_CORS_ORIGINS: '["http://localhost:3000","http://127.0.0.1:3000","http://web:3000"]'
+      SECRET_KEY: dev-secret-key-change-in-production-32chars
+      BACKEND_CORS_ORIGINS: '["http://localhost:3000","http://web:3000","http://localhost","http://host.docker.internal:3000"]'
     volumes:
       - ./backend:/app
       - media_data:/app/media
@@ -66,7 +59,13 @@ services:
         condition: service_healthy
       cache:
         condition: service_healthy
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    # Run migrations and seed data before starting the server
+    command: >
+      sh -c "
+        alembic upgrade head &&
+        python -m app.initial_data &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      "
     networks:
       - kitsu-network
     healthcheck:
@@ -74,10 +73,9 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
+    restart: unless-stopped
 
-  # Next.js Frontend
-  # Веб-интерфейс для пользователей
   web:
     build:
       context: ./frontend
@@ -104,9 +102,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    restart: unless-stopped
 
-  # Celery Worker
-  # Воркер для фоновых задач (парсеры, бэкапы и т.д.)
   worker:
     build:
       context: ./backend
@@ -117,7 +114,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://kitsu:devpassword@database:5432/kitsu
       REDIS_URL: redis://cache:6379/0
       API_ENV: development
-      SECRET_KEY: dev-secret-key-change-in-production
+      SECRET_KEY: dev-secret-key-change-in-production-32chars
     volumes:
       - ./backend:/app
       - media_data:/app/media
@@ -127,18 +124,10 @@ services:
       cache:
         condition: service_healthy
     command: celery -A app.worker worker --loglevel=info --concurrency=2
-    restart: unless-stopped
     networks:
       - kitsu-network
-    healthcheck:
-      test: ['CMD', 'celery', '-A', 'app.worker', 'inspect', 'ping']
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+    restart: unless-stopped
 
-  # Celery Beat Scheduler
-  # Планировщик периодических задач
   scheduler:
     build:
       context: ./backend
@@ -149,18 +138,32 @@ services:
       DATABASE_URL: postgresql+asyncpg://kitsu:devpassword@database:5432/kitsu
       REDIS_URL: redis://cache:6379/0
       API_ENV: development
-      SECRET_KEY: dev-secret-key-change-in-production
+      SECRET_KEY: dev-secret-key-change-in-production-32chars
     volumes:
       - ./backend:/app
     depends_on:
       cache:
         condition: service_healthy
     command: celery -A app.core.celery_app beat --loglevel=info --scheduler celery.beat:PersistentScheduler
-    restart: unless-stopped
     networks:
       - kitsu-network
-  
-  # UI Tests container removed in local dev to avoid external Playwright image issues
+    restart: unless-stopped
+
+  flower:
+    image: mher/flower:2.0
+    container_name: kitsu-flower-dev
+    environment:
+      CELERY_BROKER_URL: redis://cache:6379/0
+      FLOWER_PORT: 5555
+      FLOWER_BASIC_AUTH: admin:kitsuflower
+    ports:
+      - '5555:5555'
+    depends_on:
+      cache:
+        condition: service_healthy
+    networks:
+      - kitsu-network
+    restart: unless-stopped
 
 volumes:
   postgres_data:

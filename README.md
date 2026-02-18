@@ -1,157 +1,228 @@
+<div align="center">
+  <img src="logo.png" alt="Kitsu Enterprise" width="120" />
+  <h1>Kitsu Enterprise</h1>
+  <p>Anime streaming SaaS platform — FastAPI + Next.js 15 + PostgreSQL</p>
 
-# Kitsu Enterprise Platform
-
-Next‑generation anime streaming SaaS with an async FastAPI backend, a modern Next.js 15 frontend, и продвинутой системой парсеров Shikimori/Kodik.
-
----
-
-## 1. Стек и структура
-
-- **Backend**: Python 3.12, FastAPI 0.115, Pydantic v2, SQLAlchemy 2 (async), Alembic, Celery + Redis, SlowAPI rate limiting.
-- **Frontend**: Next.js 15 (App Router), React 19, TypeScript strict, Tailwind CSS 4, shadcn/ui, TanStack Query, Zustand.
-- **Хранилища**: PostgreSQL 16, Redis 7, Docker / Docker Compose.
-
-Основные директории:
-
-- `backend/` — API, модели, парсеры, фоновые задачи.
-- `frontend/` — публичный сайт и `/dashboard` админка.
-- `docs/` — архитектура, деплой, parity‑чеклист и анализ референсов.
+  ![Python](https://img.shields.io/badge/Python-3.12-blue)
+  ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688)
+  ![Next.js](https://img.shields.io/badge/Next.js-15-black)
+  ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791)
+  ![Redis](https://img.shields.io/badge/Redis-7-red)
+  ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED)
+</div>
 
 ---
 
-## 2. Быстрый старт через Docker
+## Обзор
 
-### 2.1. Предусловия
+**Kitsu Enterprise** — полнофункциональная платформа для потокового просмотра аниме с:
 
-- Установлены Docker и Docker Compose.
+- 📺 Видеоплеер с Kodik CDN
+- 🔍 Полнотекстовый поиск (PostgreSQL FTS + GIN index)
+- 👤 JWT аутентификация + email верификация + сброс пароля
+- 🛡️ RBAC с wildcard-пермиссиями
+- 🤖 Автопарсинг из Shikimori + Kodik
+- 💬 Комментарии с лайками, ответами, модерацией
+- 🔔 Уведомления о новых эпизодах
+- 📊 Административная панель с аудит-логами
+- 🔄 WebSocket для live-прогресса парсера
 
-### 2.2. Запуск
+---
+
+## Быстрый старт (разработка)
+
+### Требования
+
+- Docker + Docker Compose
+- Node.js 20+ (для фронтенда без Docker)
+- Python 3.12+ (для бэкенда без Docker)
+
+### 1. Клонировать и настроить окружение
 
 ```bash
+git clone https://github.com/Montihx/enterprise.git
 cd enterprise
+
+# Backend
+cp backend/.env.example backend/.env
+# Отредактируйте backend/.env:
+#   KODIK_API_KEY=ваш_ключ
+#   SECRET_KEY=$(openssl rand -hex 32)
+#   FIRST_SUPERUSER_EMAIL=admin@yoursite.com
+#   FIRST_SUPERUSER_PASSWORD=ваш_надёжный_пароль
+```
+
+### 2. Запустить через Docker Compose
+
+```bash
+# Режим разработки
 docker-compose up --build
+
+# Инициализировать БД (первый запуск)
+docker-compose exec api python -m app.initial_data
 ```
 
-После старта:
+Доступно:
+| Сервис | URL |
+|--------|-----|
+| Frontend | http://localhost:3000 |
+| Backend API | http://localhost:8000 |
+| API Docs | http://localhost:8000/docs |
+| Celery Flower | http://localhost:5555 |
+| Prometheus | http://localhost:9090 |
 
-- Frontend: `http://localhost:3000`
-- Backend OpenAPI: `http://localhost:8000/docs`
-- Health‑чек: `http://localhost:8000/api/health`
-
-### 2.3. Миграции и initial data
+### 3. Создать суперпользователя
 
 ```bash
-docker-compose exec backend alembic upgrade head
-docker-compose exec backend python -m app.initial_data
+docker-compose exec api python -m app.initial_data
 ```
 
 ---
 
-## 3. Локальная разработка
+## Production Deployment
 
-### 3.1. Backend (FastAPI)
+### 1. SSL сертификат
+
+```bash
+# Let's Encrypt (рекомендуется)
+KITSU_DOMAIN=your-domain.com bash scripts/setup_ssl.sh certbot
+
+# Самоподписанный (для тестирования)
+bash scripts/setup_ssl.sh self-signed
+```
+
+### 2. Production docker-compose
+
+```bash
+cp .env.prod.example .env.prod
+# Отредактируйте .env.prod — смените все пароли и ключи!
+
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+### 3. Переменные окружения (обязательные)
+
+```env
+SECRET_KEY=             # openssl rand -hex 32
+DATABASE_URL=           # postgresql+asyncpg://...
+REDIS_URL=              # redis://...
+KODIK_API_KEY=          # Ваш ключ Kodik API
+FIRST_SUPERUSER_PASSWORD=  # Надёжный пароль
+
+# Email (опционально, но рекомендуется)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your@gmail.com
+SMTP_PASSWORD=app_password
+EMAILS_FROM_EMAIL=noreply@yoursite.com
+FRONTEND_URL=https://yoursite.com
+```
+
+---
+
+## Архитектура
+
+```
+┌─────────────────────────────────────────────┐
+│                  Nginx (TLS)                 │
+│         Rate Limiting + CSP Headers          │
+└────────┬─────────────────┬──────────────────┘
+         │                 │
+    ┌────▼────┐      ┌──────▼──────┐
+    │ FastAPI │      │  Next.js 15 │
+    │  API    │      │  Frontend   │
+    └────┬────┘      └─────────────┘
+         │
+    ┌────┴──────────────────────────┐
+    │  PostgreSQL 16  │  Redis 7    │
+    │  + FTS indexes  │  + Pub/Sub  │
+    └─────────────────┴─────────────┘
+         │
+    ┌────▼─────────────────────────┐
+    │     Celery Workers           │
+    │  Shikimori + Kodik Parsers   │
+    │  + Beat Scheduler            │
+    └──────────────────────────────┘
+```
+
+---
+
+## API Эндпоинты
+
+### Аутентификация
+| Метод | URL | Описание |
+|-------|-----|----------|
+| POST | `/api/v1/auth/register` | Регистрация |
+| POST | `/api/v1/auth/login/access-token` | Вход |
+| POST | `/api/v1/auth/refresh-token` | Обновить токен |
+| POST | `/api/v1/auth/forgot-password` | Сброс пароля |
+| POST | `/api/v1/auth/reset-password` | Установить новый пароль |
+| GET | `/api/v1/auth/verify-email` | Подтвердить email |
+| POST | `/api/v1/auth/change-password` | Сменить пароль |
+
+### Аниме
+| Метод | URL | Описание |
+|-------|-----|----------|
+| GET | `/api/v1/anime/` | Каталог |
+| GET | `/api/v1/anime/{slug}` | Детали аниме |
+| GET | `/api/v1/anime/search?q=` | Поиск |
+
+### Взаимодействия
+| Метод | URL | Описание |
+|-------|-----|----------|
+| GET/POST | `/api/v1/interactions/comments` | Комментарии |
+| POST | `/api/v1/interactions/comments/{id}/like` | Лайк |
+| POST | `/api/v1/interactions/comments/{id}/reply` | Ответ |
+| DELETE | `/api/v1/interactions/comments/{id}` | Удалить |
+| POST | `/api/v1/interactions/favorites` | Избранное |
+| POST | `/api/v1/interactions/watch-progress` | Прогресс |
+
+---
+
+## Тесты
 
 ```bash
 cd backend
-python -m venv .venv
-.venv\Scripts\activate  # Windows
-# или source .venv/bin/activate на Linux/macOS
 
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
+# Установить зависимости для тестов
+pip install pytest pytest-asyncio httpx aiosqlite
 
-set DATABASE_URL=postgresql+asyncpg://kitsu:devpassword@localhost:5432/kitsu
-set REDIS_URL=redis://localhost:6379/0
+# Запустить тесты (SQLite in-memory, без Docker)
+pytest -v
 
-alembic upgrade head
-python -m app.initial_data
+# Только быстрые тесты
+pytest -m "not integration" -v
 
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# С покрытием
+pytest --cov=app --cov-report=html
 ```
-
-> На Windows установка `uvloop` из `requirements.txt` может упасть — это не критично для разработки, можно игнорировать эту ошибку или работать через WSL2.
-
-### 3.2. Frontend (Next.js)
-
-```bash
-cd frontend
-pnpm install
-
-# настроить API URL
-echo NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1 > .env.local
-
-pnpm dev
-```
-
-Публичный сайт: `http://localhost:3000`  
-Админка: `http://localhost:3000/dashboard`
 
 ---
 
-## 4. Тесты и качество кода
-### 4. UI тесты
-1) Установить Playwright и браузеры:
-   - cd frontend
-   - pnpm install
-   - npm i -D @playwright/test (если нужно отдельно)
-   - npx playwright install
-2) Запуск UI тестов:
-   - pnpm run test:e2e
+## Мониторинг
 
-### Backend
-
-```bash
-cd backend
-pytest --cov=app --cov-report=term
-ruff check .
-mypy app
-```
-
-В CI (`.github/workflows/backend-ci.yml`) зашиты:
-
-- линтинг `ruff`,
-- типизация `mypy`,
-- покрытие `pytest --cov-fail-under=85`.
-
-### Frontend
-
-```bash
-cd frontend
-pnpm lint
-pnpm tsc --noEmit
-pnpm test -- --coverage
-```
-
-В CI (`.github/workflows/frontend-ci.yml`) enforced:
-
-- Jest/Vitest‑coverage с порогом **75% по строкам**.
+| Инструмент | URL | Описание |
+|-----------|-----|----------|
+| FastAPI Docs | `/docs` | OpenAPI UI |
+| Prometheus Metrics | `/metrics` | Метрики приложения |
+| Celery Flower | `:5555` | Мониторинг воркеров |
+| Prometheus | `:9090` | Агрегация метрик |
 
 ---
 
-## 5. Основные фичи
+## Безопасность
 
-- Каталог аниме с фильтрами и полнотекстовым поиском (`/catalog`).
-- Детальная страница тайтла, комментарии, избранное.
-- Видео‑плеер с прогрессом просмотра и секцией «Continue Watching».
-- Публичные коллекции (`/collections`) и приватные юзерские подборки.
-- Полноценный `/dashboard`:
-  - контент‑CRUD (Anime/Episodes/Releases),
-  - пользователи и роли (RBAC),
-  - модерация комментариев,
-  - аналитика и мониторинг,
-  - парсер‑система: live‑поиск, авто‑fill, scheduler, конфликты, логи.
-
-За более детальной архитектурой и схемой БД — см. `docs/ARCHITECTURE.md` и `docs/PARITY_CHECKLIST.md`.
+- 🔐 JWT с разделёнными `access` и `refresh` токенами
+- 🚫 Rate limiting на уровне Nginx + FastAPI (slowapi)
+- 🛡️ CSP заголовки для защиты от XSS
+- 🔒 HTTPS с TLS 1.2/1.3
+- 🏠 HSTS заголовок
+- ✅ Pydantic схемы на всех входящих данных
+- 📝 Аудит-лог всех административных действий
+- 🔑 PBKDF2/bcrypt хеширование паролей
 
 ---
 
-## 6. Продакшн‑деплой
+## Лицензия
 
-Подробное руководство: `docs/DEPLOYMENT.md`.
-
-Коротко:
-
-1. Настроить `.env` (DATABASE_URL, REDIS_URL, SECRET_KEY, KODIK_API_KEY, STATIC_HOST).
-2. Собрать и поднять `docker-compose.prod.yml`.
-3. Применить миграции и выполнить `python -m app.initial_data`.
-4. Повесить домен и SSL (через Nginx/Cloudflare).
+MIT License — использовать свободно, упоминание автора приветствуется.

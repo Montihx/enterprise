@@ -21,11 +21,21 @@ class BackupService:
         filename = f"kitsu_backup_{timestamp}.sql.gz"
         filepath = self.backup_dir / filename
 
-        # Construct pg_dump command
-        db_url = str(settings.DATABASE_URL)
-        standard_url = db_url.replace("+asyncpg", "")
+        # Construct pg_dump command using PGPASSWORD env to avoid credentials in process list
+        import re as _re
+        db_url = str(settings.DATABASE_URL).replace("+asyncpg", "")
+        # Parse URL components
+        match = _re.match(r'postgresql://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)', db_url)
+        if match:
+            pg_user, pg_pass, pg_host, pg_port, pg_db = match.groups()
+        else:
+            pg_user, pg_pass, pg_host, pg_port, pg_db = "kitsu", "", "localhost", "5432", "kitsu"
 
-        cmd = f"pg_dump {standard_url} | gzip > {filepath}"
+        cmd = (
+            f"PGPASSWORD={pg_pass} pg_dump "
+            f"-h {pg_host} -p {pg_port} -U {pg_user} {pg_db} "
+            f"| gzip > {filepath}"
+        )
         
         try:
             logger.info("Backup Engine: Initiating snapshot", filename=filename)

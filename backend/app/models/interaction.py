@@ -1,6 +1,6 @@
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from sqlalchemy import String, Integer, Text, Boolean, DateTime, ForeignKey, CheckConstraint, Numeric, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -98,6 +98,9 @@ class WatchProgress(Base):
     
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    episode = relationship("Episode", lazy="joined")
 
     __table_args__ = (
         UniqueConstraint('user_id', 'episode_id', name='uq_user_episode_progress'),

@@ -15,7 +15,11 @@ class CommentCreate(CommentBase):
 
 class CommentUpdate(BaseModel):
     content: Optional[str] = None
+
+class CommentModerationUpdate(BaseModel):
+    """Admin/moderator only fields"""
     is_hidden: Optional[bool] = None
+    is_deleted: Optional[bool] = None
 
 class Comment(CommentBase):
     id: UUID

@@ -7,3 +7,27 @@ __pycache__/
 *.pyc
 node_modules/
 .next/
+
+# Environment files - NEVER COMMIT
+backend/.env
+.env.local
+*.env.local
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Celery runtime files
+celerybeat-schedule
+celerybeat.pid
+
+# Backup temp files
+*.bak
+*.backup
+
+# IDE
+.idea/
+.vscode/
+*.swp

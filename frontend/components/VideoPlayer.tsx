@@ -38,7 +38,7 @@ export function VideoPlayer({ episodeId, sourceUrl, embedUrl, onEnded }: VideoPl
     setIsIframe(!!isManagedProvider);
   }, [sourceUrl, embedUrl]);
 
-  // Telemetry Sync: Commit watch progress to the grid every 30 seconds
+  // Telemetry Sync: Commit watch progress to the grid every 30 seconds (direct video)
   useEffect(() => {
     const interval = setInterval(() => {
       if (videoRef.current && isPlaying && !isIframe) {
@@ -51,6 +51,54 @@ export function VideoPlayer({ episodeId, sourceUrl, embedUrl, onEnded }: VideoPl
     }, 30000);
     return () => clearInterval(interval);
   }, [isPlaying, episodeId, isIframe]);
+
+  // Kodik/iframe watch progress via postMessage API
+  // Kodik sends: { type: 'kodik_player', event: 'timeupdate', currentTime, duration }
+  useEffect(() => {
+    if (!isIframe) return;
+
+    let lastSavedTime = 0;
+    const SAVE_INTERVAL = 30; // Save every 30 seconds of playback
+
+    const handleMessage = (event: MessageEvent) => {
+      // Accept messages from trusted iframe providers
+      const trustedOrigins = ['https://kodik.biz', 'https://kodik.cc', 'https://aniboom.one'];
+      if (!trustedOrigins.some(o => event.origin.startsWith(o.replace('https://', '')))) {
+        return; // Ignore untrusted origins
+      }
+
+      const data = event.data;
+      if (!data || typeof data !== 'object') return;
+
+      // Kodik postMessage format
+      if (data.type === 'kodik_player' && data.event === 'timeupdate') {
+        const currentTime = Math.floor(data.currentTime || 0);
+        const duration = Math.floor(data.duration || 0);
+
+        if (duration > 0 && currentTime > lastSavedTime + SAVE_INTERVAL) {
+          lastSavedTime = currentTime;
+          progressMutation.mutate({
+            episode_id: episodeId,
+            position: currentTime,
+            total: duration,
+          });
+        }
+      }
+
+      // Generic player ended event
+      if (data.type === 'kodik_player' && data.event === 'ended') {
+        progressMutation.mutate({
+          episode_id: episodeId,
+          position: data.duration || 0,
+          total: data.duration || 0,
+        });
+        onEnded();
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [isIframe, episodeId, onEnded]);
 
   const handleMouseMove = () => {
     setShowControls(true);

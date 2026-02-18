@@ -202,17 +202,17 @@ class ShikimoriParserService:
 
                 if not items: break
                 
-                for item in items:
+                async def _process_item(item):
                     async with semaphore:
                         try:
                             stats["proc"] += 1
                             details = await self.get_full_data(str(item['id']))
                             
                             if not details:
-                                stats["skip"] += 1; continue
+                                stats["skip"] += 1; return
 
                             if not await self._passes_filters(db, job_id, details, config, blacklist):
-                                stats["skip"] += 1; continue
+                                stats["skip"] += 1; return
 
                             mapped = self._apply_templates(details, config)
                             mapped['genres'] = await taxonomy_service.reconcile_genres(db, mapped['genres'])
@@ -228,7 +228,7 @@ class ShikimoriParserService:
                             existing = await crud_anime.get_by_shikimori_id(db, shikimori_id=mapped['shikimori_id'])
                             if existing:
                                 if await self._detect_conflict(db, job_id, existing, mapped):
-                                    stats["skip"] += 1; continue
+                                    stats["skip"] += 1; return
                                 if config.get('auto_update', True):
                                     await crud_anime.update(db, db_obj=existing, obj_in=mapped)
                                     stats["update"] += 1
@@ -242,6 +242,8 @@ class ShikimoriParserService:
                         except Exception as e:
                             stats["fail"] += 1
                             await self._add_log(db, job_id, "ERROR", f"Ingestion error for ID {item.get('id')}: {str(e)}")
+
+                await asyncio.gather(*[_process_item(item) for item in items])
 
                 await asyncio.sleep(config.get('request_delay_ms', 200) / 1000)
 

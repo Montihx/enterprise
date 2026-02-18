@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 const config: Config = {
@@ -12,16 +11,15 @@ const config: Config = {
     container: {
       center: true,
       padding: "2rem",
-      screens: {
-        "2xl": "1400px",
-      },
+      screens: { "2xl": "1400px" },
     },
     extend: {
       colors: {
         bg: {
           primary: "var(--bg-primary)",
-          secondary: "var(--bg-secondary)", 
+          secondary: "var(--bg-secondary)",
           tertiary: "var(--bg-tertiary)",
+          card: "var(--bg-card)",
         },
         accent: {
           primary: "var(--accent-primary)",
@@ -38,10 +36,17 @@ const config: Config = {
         border: "var(--border)",
       },
       fontFamily: {
-        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "system-ui", "sans-serif"],
+        body: ["var(--font-body)", "system-ui", "sans-serif"],
+        sans: ["var(--font-body)", "system-ui", "sans-serif"],
       },
-      spacing: {
-        '4.5': '1.125rem', // 18px
+      scale: {
+        '102': '1.02',
+        '108': '1.08',
+      },
+      keyframes: {
+        "accordion-down": { from: { height: "0" }, to: { height: "var(--radix-accordion-content-height)" } },
+        "accordion-up": { from: { height: "var(--radix-accordion-content-height)" }, to: { height: "0" } },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",

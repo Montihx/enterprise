@@ -1,6 +1,6 @@
 
 import uuid
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Optional, List
 from sqlalchemy import String, Integer, Text, Date, DateTime, Numeric, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship

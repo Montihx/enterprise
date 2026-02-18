@@ -107,7 +107,8 @@ export default function LoginPage() {
 
                 <div className="text-center mt-4">
                     <p className="text-sm text-text-secondary">
-                        Нет аккаунта?{' '}
+                        <a href="/forgot-password" className="text-sm text-neutral-400 hover:text-white">Забыли пароль?</a>
+          Нет аккаунта?{' '}
                         <Link href="/register" className="font-bold text-white hover:text-accent-primary transition-colors">
                             Зарегистрируйтесь
                         </Link>

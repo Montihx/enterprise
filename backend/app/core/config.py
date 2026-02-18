@@ -39,6 +39,14 @@ class Settings(BaseSettings):
     KODIK_URL: str = "https://kodikapi.com"
     KODIK_API_KEY: Optional[str] = None
     
+    # Email / SMTP
+    SMTP_HOST: Optional[str] = None
+    SMTP_PORT: int = 587
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    EMAILS_FROM_EMAIL: str = "noreply@kitsu.io"
+    FRONTEND_URL: str = "http://localhost:3000"
+
     # Sentry Monitoring
     SENTRY_DSN: Optional[str] = None
 

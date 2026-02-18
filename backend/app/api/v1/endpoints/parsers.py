@@ -231,7 +231,25 @@ async def trigger_manual_job(job_in: ParserJobCreate, db: AsyncSession = Depends
     return {"job_id": job.id, "status": "dispatched"}
 
 @router.websocket("/ws/jobs/{job_id}")
-async def job_telemetry_ws(websocket: WebSocket, job_id: str):
+async def job_telemetry_ws(websocket: WebSocket, job_id: str, token: str = None):
+    # Auth check: token passed as query param ?token=...
+    from app.core import security
+    from app.crud.crud_user import user as crud_user
+    from app.db.session import AsyncSessionLocal
+    from jose import JWTError
+    from app.schemas.token import TokenPayload
+    if not token:
+        await websocket.close(code=4001, reason="Unauthorized")
+        return
+    try:
+        payload = security.jwt.decode(token, settings.SECRET_KEY, algorithms=[security.ALGORITHM])
+        token_data = TokenPayload(**payload)
+        if token_data.type != "access":
+            await websocket.close(code=4001, reason="Invalid token type")
+            return
+    except (JWTError, Exception):
+        await websocket.close(code=4001, reason="Invalid token")
+        return
     await websocket.accept()
     redis = Redis.from_url(str(settings.REDIS_URL))
     pubsub = redis.pubsub()

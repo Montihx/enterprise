@@ -1,11 +1,9 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Clock, X, Loader2 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { Search, Clock, X, Loader2, TrendingUp, Star, ChevronRight, ArrowRight } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -16,222 +14,269 @@ interface SearchModalProps {
   onClose: () => void;
 }
 
-// Fix: Casting motion components to any to avoid type errors
 const MotionDiv = motion.div as any;
+
+const TRENDING_SEARCHES = ['Attack on Titan', 'Jujutsu Kaisen', 'Demon Slayer', 'One Piece', 'Chainsaw Man'];
 
 export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Anime[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  
-  const debouncedQuery = useDebounce(query, 300);
-  
-  // Load recent searches
+  const debouncedQuery = useDebounce(query, 280);
+
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const recent = JSON.parse(localStorage.getItem('recentSearches') || '[]');
-      setRecentSearches(recent);
-    }
-  }, [isOpen]);
-  
-  // Auto-focus on open
-  useEffect(() => {
-    if (isOpen && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isOpen]);
-  
-  // Search
-  useEffect(() => {
-    if (debouncedQuery.length < 2) {
+    if (isOpen) {
+      setQuery('');
       setResults([]);
-      return;
+      setSelectedIndex(-1);
+      setTimeout(() => inputRef.current?.focus(), 80);
+      if (typeof window !== 'undefined') {
+        const recent = JSON.parse(localStorage.getItem('recentSearches') || '[]');
+        setRecentSearches(recent);
+      }
     }
-    
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (debouncedQuery.length < 2) { setResults([]); return; }
     const search = async () => {
       setIsLoading(true);
       try {
-        const { data } = await api.get<PaginatedResponse<Anime>>(`/anime/?q=${debouncedQuery}&limit=5`);
+        const { data } = await api.get<PaginatedResponse<Anime>>(`/anime/?q=${encodeURIComponent(debouncedQuery)}&limit=8`);
         setResults(data.data || []);
-      } catch (error) {
-        console.error('Search error:', error);
-      } finally {
-        setIsLoading(false);
-      }
+      } catch { setResults([]); }
+      finally { setIsLoading(false); }
     };
-    
     search();
   }, [debouncedQuery]);
-  
-  // Keyboard navigation
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return;
-      
-      if (e.key === 'Escape') {
-        onClose();
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setSelectedIndex((prev) => 
-          Math.min(prev + 1, results.length - 1)
-        );
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setSelectedIndex((prev) => Math.max(prev - 1, 0));
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        if (results[selectedIndex]) {
-          handleSelect(results[selectedIndex]);
-        }
-      }
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIndex((p) => Math.min(p + 1, results.length - 1)); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIndex((p) => Math.max(p - 1, -1)); }
+      if (e.key === 'Enter' && selectedIndex >= 0 && results[selectedIndex]) handleSelect(results[selectedIndex]);
     };
-    
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, results, selectedIndex]);
-  
+
   const handleSelect = (anime: Anime) => {
-    const updated = [
-      anime.title,
-      ...recentSearches.filter((s) => s !== anime.title)
-    ].slice(0, 5);
+    const updated = [anime.title, ...recentSearches.filter((s) => s !== anime.title)].slice(0, 5);
     localStorage.setItem('recentSearches', JSON.stringify(updated));
-    setRecentSearches(updated);
-    
     router.push(`/anime/${anime.slug}`);
     onClose();
   };
-  
+
+  const handleSearchSubmit = () => {
+    if (!query.trim()) return;
+    const updated = [query.trim(), ...recentSearches.filter((s) => s !== query.trim())].slice(0, 5);
+    localStorage.setItem('recentSearches', JSON.stringify(updated));
+    router.push(`/catalog?q=${encodeURIComponent(query.trim())}`);
+    onClose();
+  };
+
+  const clearRecent = () => {
+    localStorage.setItem('recentSearches', '[]');
+    setRecentSearches([]);
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
+          {/* Full-screen backdrop */}
           <MotionDiv
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
             onClick={onClose}
-            className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm"
+            className="fixed inset-0 z-[70]"
+            style={{ background: 'rgba(7,7,16,0.85)', backdropFilter: 'blur(16px)' }}
           />
-          
-          {/* Modal */}
-          <MotionDiv
-            initial={{ opacity: 0, scale: 0.95, y: -20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -20 }}
-            transition={{ duration: 0.2 }}
-            className="fixed left-1/2 top-20 z-[70] w-full max-w-2xl -translate-x-1/2 px-4"
-          >
-            <div className="rounded-2xl border border-border bg-bg-secondary shadow-2xl overflow-hidden ring-1 ring-white/10">
-              {/* Header */}
-              <div className="flex items-center gap-4 border-b border-border p-5">
-                <Search className="h-6 w-6 text-accent-primary" />
-                <Input
-                  ref={inputRef}
-                  value={query}
-                  onChange={(e) => {
-                    setQuery(e.target.value);
-                    setSelectedIndex(0);
-                  }}
-                  placeholder="Quick search titles..."
-                  className="border-0 bg-transparent focus:ring-0 text-xl h-12 p-0 placeholder:text-text-muted"
-                />
-                <button 
-                  onClick={onClose}
-                  className="rounded-lg bg-bg-tertiary px-3 py-1.5 text-xs font-black text-text-muted hover:text-white transition-colors"
-                >
-                  ESC
-                </button>
-              </div>
-              
-              {/* Results */}
-              <div className="max-h-[60vh] overflow-y-auto p-3 custom-scrollbar">
-                {isLoading && (
-                  <div className="py-12 text-center text-sm text-text-muted flex flex-col justify-center items-center gap-3">
-                    <Loader2 className="animate-spin h-8 w-8 text-accent-primary" /> 
-                    <span className="font-bold tracking-widest uppercase">Initializing Probe</span>
-                  </div>
-                )}
-                
-                {!isLoading && query.length >= 2 && results.length === 0 && (
-                  <div className="py-12 text-center text-text-muted flex flex-col items-center gap-3">
-                    <X className="h-10 w-10 opacity-20" />
-                    <span className="font-bold tracking-widest uppercase">No Records Found</span>
-                  </div>
-                )}
-                
-                {results.length > 0 && (
-                  <div className="space-y-1.5">
-                    {results.map((result, index) => (
-                      <button
-                        key={result.id}
-                        onClick={() => handleSelect(result)}
-                        onMouseEnter={() => setSelectedIndex(index)}
-                        className={cn(
-                          "w-full rounded-xl p-4 text-left transition-all flex items-center gap-4 group",
-                          index === selectedIndex
-                            ? "bg-accent-primary/10 border border-accent-primary/30"
-                            : "hover:bg-bg-tertiary border border-transparent"
-                        )}
-                      >
-                        <div className="h-16 w-12 bg-bg-tertiary rounded-lg overflow-hidden flex-shrink-0 shadow-lg group-hover:scale-105 transition-transform">
-                          {result.poster_url && (
-                            <img
-                              src={result.poster_url}
-                              alt={result.title}
-                              className="h-full w-full object-cover"
-                            />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={cn(
-                            "font-bold text-lg truncate transition-colors", 
-                            index === selectedIndex ? "text-accent-primary" : "text-white"
-                          )}>
-                            {result.title}
-                          </p>
-                          <p className="text-sm text-text-muted truncate font-medium uppercase tracking-wider">
-                            {result.kind} • {result.year || 'N/A'} • ★ {result.score || '0.0'}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                
-                {/* Recent searches */}
-                {query.length === 0 && recentSearches.length > 0 && (
-                  <div className="space-y-2 p-2">
-                    <p className="px-2 py-1 text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">
-                      Recent Archives
-                    </p>
-                    {recentSearches.map((search) => (
-                      <button
-                        key={search}
-                        onClick={() => setQuery(search)}
-                        className="flex w-full items-center gap-3 rounded-lg p-3 text-left hover:bg-bg-tertiary text-text-secondary hover:text-white transition-colors group"
-                      >
-                        <Clock className="h-4 w-4 text-text-muted group-hover:text-accent-primary transition-colors" />
-                        <span className="font-medium">{search}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
 
-                {query.length === 0 && recentSearches.length === 0 && (
-                  <div className="py-20 text-center text-text-muted italic flex flex-col items-center gap-4">
-                     <Search className="h-12 w-12 opacity-5" />
-                     <p className="font-medium">Enter query to begin indexing.</p>
+          {/* Modal */}
+          <div className="fixed inset-x-0 top-0 z-[80] flex justify-center pt-16 px-4 pb-8">
+            <MotionDiv
+              initial={{ opacity: 0, y: -20, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.97 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="w-full max-w-2xl"
+            >
+              <div className="rounded-2xl overflow-hidden shadow-2xl shadow-black border border-[var(--glass-border)]"
+                style={{ background: 'rgba(15,15,26,0.95)', backdropFilter: 'blur(24px)' }}>
+
+                {/* Search input row */}
+                <div className="flex items-center gap-4 p-5 border-b border-[var(--border)]">
+                  <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
+                    <Search className="h-5 w-5 text-violet-400" />
                   </div>
-                )}
+                  <input
+                    ref={inputRef}
+                    value={query}
+                    onChange={(e) => { setQuery(e.target.value); setSelectedIndex(-1); }}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit()}
+                    placeholder="Search anime, genres, studios..."
+                    className="flex-1 bg-transparent border-none outline-none text-lg font-medium text-white placeholder:text-[var(--text-muted)]"
+                  />
+                  <div className="flex items-center gap-2">
+                    {query && (
+                      <button onClick={() => setQuery('')} className="p-1.5 rounded-lg hover:bg-white/5 text-[var(--text-muted)] hover:text-white transition-all">
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                    <kbd className="px-2.5 py-1.5 rounded-lg bg-white/5 border border-[var(--border)] text-[10px] font-black text-[var(--text-muted)]">ESC</kbd>
+                  </div>
+                </div>
+
+                {/* Results area */}
+                <div className="max-h-[65vh] overflow-y-auto">
+                  {/* Loading */}
+                  {isLoading && (
+                    <div className="py-12 flex flex-col items-center gap-3 text-[var(--text-muted)]">
+                      <Loader2 className="h-7 w-7 animate-spin text-violet-400" />
+                      <span className="text-xs font-bold uppercase tracking-widest">Searching...</span>
+                    </div>
+                  )}
+
+                  {/* Results */}
+                  {!isLoading && results.length > 0 && (
+                    <div className="p-2">
+                      <p className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Results</p>
+                      {results.map((result, index) => (
+                        <button
+                          key={result.id}
+                          onClick={() => handleSelect(result)}
+                          onMouseEnter={() => setSelectedIndex(index)}
+                          className={cn(
+                            'w-full flex items-center gap-4 p-3 rounded-xl transition-all text-left group',
+                            index === selectedIndex ? 'bg-violet-500/10 border border-violet-500/20' : 'hover:bg-white/5 border border-transparent'
+                          )}
+                        >
+                          <div className="w-12 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-[var(--bg-tertiary)] shadow-lg">
+                            {result.poster_url && (
+                              <img src={result.poster_url} alt={result.title} className="w-full h-full object-cover" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={cn('font-bold text-base truncate transition-colors', index === selectedIndex ? 'text-violet-400' : 'text-white')}>
+                              {result.title}
+                            </p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-xs text-[var(--text-muted)] uppercase font-medium">{result.kind}</span>
+                              <span className="text-[var(--text-muted)]">·</span>
+                              <span className="text-xs text-[var(--text-muted)]">{result.year || 'N/A'}</span>
+                              {result.score > 0 && (
+                                <>
+                                  <span className="text-[var(--text-muted)]">·</span>
+                                  <span className="flex items-center gap-1 text-xs text-yellow-500 font-bold">
+                                    <Star className="h-3 w-3 fill-current" />
+                                    {result.score.toFixed(1)}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                            {result.genres?.length > 0 && (
+                              <div className="flex gap-1 mt-1.5">
+                                {result.genres.slice(0, 3).map((g) => (
+                                  <span key={g} className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-violet-500/10 text-violet-400 border border-violet-500/15">
+                                    {g}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <ChevronRight className={cn('h-4 w-4 flex-shrink-0 transition-colors', index === selectedIndex ? 'text-violet-400' : 'text-[var(--text-muted)]')} />
+                        </button>
+                      ))}
+
+                      {/* See all results */}
+                      <button
+                        onClick={handleSearchSubmit}
+                        className="w-full flex items-center justify-center gap-2 p-3 mt-1 rounded-xl border border-dashed border-[var(--border)] hover:border-violet-500/30 text-[var(--text-muted)] hover:text-violet-400 transition-all text-sm font-bold"
+                      >
+                        <ArrowRight className="h-4 w-4" />
+                        See all results for "{query}"
+                      </button>
+                    </div>
+                  )}
+
+                  {/* No results */}
+                  {!isLoading && query.length >= 2 && results.length === 0 && (
+                    <div className="py-14 flex flex-col items-center gap-3 text-[var(--text-muted)]">
+                      <Search className="h-12 w-12 opacity-10" />
+                      <p className="font-bold text-sm">No results found for "{query}"</p>
+                      <p className="text-xs">Try different keywords or browse the catalog</p>
+                    </div>
+                  )}
+
+                  {/* Empty state: recent + trending */}
+                  {query.length < 2 && (
+                    <div className="p-4 space-y-5">
+                      {/* Recent searches */}
+                      {recentSearches.length > 0 && (
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Recent</p>
+                            <button onClick={clearRecent} className="text-[10px] font-bold text-[var(--text-muted)] hover:text-violet-400 transition-colors">
+                              Clear all
+                            </button>
+                          </div>
+                          <div className="space-y-1">
+                            {recentSearches.map((s) => (
+                              <button key={s} onClick={() => setQuery(s)}
+                                className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl hover:bg-white/5 text-left transition-all group">
+                                <Clock className="h-4 w-4 text-[var(--text-muted)] group-hover:text-violet-400 transition-colors" />
+                                <span className="text-sm font-medium text-[var(--text-secondary)] group-hover:text-white transition-colors">{s}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Trending */}
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2">Trending</p>
+                        <div className="flex flex-wrap gap-2">
+                          {TRENDING_SEARCHES.map((s, i) => (
+                            <button key={s} onClick={() => setQuery(s)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-violet-500/10 border border-[var(--border)] hover:border-violet-500/30 text-sm text-[var(--text-secondary)] hover:text-violet-400 transition-all font-medium">
+                              <TrendingUp className="h-3 w-3" />
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="px-5 py-3 border-t border-[var(--border)] flex items-center justify-between bg-[var(--bg-secondary)]/50">
+                  <div className="flex items-center gap-4 text-[10px] text-[var(--text-muted)]">
+                    <span className="flex items-center gap-1.5">
+                      <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-[var(--border)] font-mono">↑↓</kbd>
+                      Navigate
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-[var(--border)] font-mono">↵</kbd>
+                      Select
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-[var(--text-muted)]">
+                    {results.length > 0 ? `${results.length} results` : 'Type to search'}
+                  </span>
+                </div>
               </div>
-            </div>
-          </MotionDiv>
+            </MotionDiv>
+          </div>
         </>
       )}
     </AnimatePresence>

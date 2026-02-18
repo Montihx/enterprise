@@ -40,12 +40,18 @@ celery_app.autodiscover_tasks(["app.tasks"])
 async def publish_job_progress(job_id: str, progress: int, stats: dict):
     """
     Broadcasts job updates to the WebSocket hub via Redis Pub/Sub.
+    Reuses the app-level cache connection instead of creating a new one each call.
     """
-    redis = Redis.from_url(str(settings.REDIS_URL))
+    from app.core.cache import cache
     payload = {
         "job_id": job_id,
         "progress": progress,
         "stats": stats
     }
-    await redis.publish(f"job_progress:{job_id}", json.dumps(payload))
-    await redis.close()
+    if cache.redis:
+        await cache.redis.publish(f"job_progress:{job_id}", json.dumps(payload))
+    else:
+        # Fallback: create short-lived connection only if cache not initialized
+        _redis = Redis.from_url(str(settings.REDIS_URL))
+        await _redis.publish(f"job_progress:{job_id}", json.dumps(payload))
+        await _redis.close()

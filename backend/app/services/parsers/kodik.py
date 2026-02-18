@@ -19,7 +19,20 @@ from app.core.logging import logger
 class KodikParserService:
     def __init__(self, proxy_config: Optional[Dict] = None):
         self.api_key = proxy_config.get('kodik_api_key') if proxy_config else settings.KODIK_API_KEY
+        if not self.api_key:
+            from app.core.logging import logger as _logger
+            _logger.warning(
+                "KodikParser: KODIK_API_KEY is not set. "
+                "All requests will return 401. Set KODIK_API_KEY in your .env file."
+            )
         self.client = httpx.AsyncClient(base_url=settings.KODIK_URL, timeout=20.0)
+
+    def _ensure_api_key(self) -> None:
+        if not self.api_key:
+            raise ValueError(
+                "KODIK_API_KEY is not configured. "
+                "Add KODIK_API_KEY=your_key to your .env file."
+            )
 
     async def close(self):
         await self.client.aclose()
@@ -43,9 +56,10 @@ class KodikParserService:
 
     async def sync_ongoing_releases(self, db: AsyncSession, job_id: Optional[str] = None):
         """
-        Pulse Engine: Scans all 'ongoing' anime in local DB and syncs with CDN cluster.
-        Automatically provisions Release nodes and notifies users.
+        Syncs all 'ongoing' anime with Kodik CDN.
+        Automatically creates Release records and notifies users.
         """
+        self._ensure_api_key()
         query = select(Anime).filter(Anime.status == 'ongoing', Anime.kodik_id.isnot(None))
         result = await db.execute(query)
         animes = result.scalars().all()

@@ -113,9 +113,9 @@ def upgrade() -> None:
         CREATE FUNCTION anime_search_vector_update() RETURNS trigger AS $$
         BEGIN
             NEW.search_vector :=
-                setweight(to_tsvector('pg_catalog.english', coalesce(NEW.title, '')), 'A') ||
-                setweight(to_tsvector('pg_catalog.english', coalesce(NEW.title_en, '')), 'B') ||
-                setweight(to_tsvector('pg_catalog.english', coalesce(NEW.description, '')), 'C');
+                setweight(to_tsvector('pg_catalog.simple', coalesce(NEW.title, '')), 'A') ||
+                setweight(to_tsvector('pg_catalog.simple', coalesce(NEW.title_en, '')), 'B') ||
+                setweight(to_tsvector('pg_catalog.simple', coalesce(NEW.description, '')), 'C');
             RETURN NEW;
         END
         $$ LANGUAGE plpgsql;

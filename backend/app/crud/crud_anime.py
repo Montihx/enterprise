@@ -31,7 +31,7 @@ class CRUDAnime(CRUDBase[Anime, AnimeCreate, AnimeUpdate]):
         
         # Enterprise Search with Rank
         if search:
-            search_query = func.plainto_tsquery('english', search)
+            search_query = func.plainto_tsquery('simple', search)
             rank = func.ts_rank_cd(Anime.search_vector, search_query)
             query = query.filter(Anime.search_vector.op("@@")(search_query))
             query = query.order_by(desc(rank))
